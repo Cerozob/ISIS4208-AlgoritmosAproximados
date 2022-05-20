@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class VertexCoverApproximateAlgorithms {
@@ -74,6 +76,7 @@ public class VertexCoverApproximateAlgorithms {
         @Override
         public void parseInput(VertexCoverApproximateAlgorithms.Edge[] edges) {
             input = edges;
+            // Collections.shuffle(input);
         }
 
         @Override
@@ -92,45 +95,138 @@ public class VertexCoverApproximateAlgorithms {
 
     private class Algorithm2 extends ApproximateAlgorithm {
 
-        @Override
-        public void parseInput(VertexCoverApproximateAlgorithms.Edge[] edges) {
-            // TODO Auto-generated method stub
-
-        }
-
-        @Override
-        public void solveVertexCover() {
-            // TODO Auto-generated method stub
-
-        }
-    }
-
-    private class Algorithm3 extends ApproximateAlgorithm {
-
-        public boolean[][] input;
+        public HashMap<Integer, List<Integer>> input;
 
         @Override
         public void parseInput(VertexCoverApproximateAlgorithms.Edge[] edges) {
             Integer leftid = null;
             Integer rightid = null;
-            int max = 0;
+            input = new HashMap<>();
             for (Edge e : edges) {
                 leftid = e.left;
                 rightid = e.right;
-                max = Math.max(leftid, Math.max(rightid, max));
+                if (!input.containsKey(leftid)) {
+                    input.put(leftid, new LinkedList<Integer>());
+
+                }
+                if (!input.containsKey(rightid)) {
+                    input.put(rightid, new LinkedList<Integer>());
+                }
+                input.get(leftid).add(rightid);
+                input.get(rightid).add(leftid);
             }
-            input = new boolean[max + 1][max + 1];
-            for (Edge e : edges) {
-                leftid = e.left;
-                rightid = e.right;
-                input[leftid][rightid] = true;
-                input[rightid][leftid] = true;
+        }
+
+        public int rank(int v) {
+            return input.get(v).size();
+        }
+
+        public int findHighestRank() {
+            int max = -1;
+            int id = -1;
+            for (Map.Entry<Integer, List<Integer>> entry : input.entrySet()) {
+                int size = entry.getValue().size();
+                int currentid = entry.getKey();
+                if (size >= max) {
+                    max = size;
+                    id = currentid;
+                }
+            }
+            return id;
+        }
+
+        public void discardEdges(int v) {
+            input.remove(v);
+            for (Map.Entry<Integer, List<Integer>> lista : input.entrySet()) {
+                if (lista.getValue().contains(v)) {
+                    lista.getValue().remove(lista.getValue().indexOf(v));
+                }
             }
         }
 
         @Override
         public void solveVertexCover() {
+            ArrayList<Integer> sol = new ArrayList<>();
+            while (!input.isEmpty()) {
+                int added = findHighestRank();
+                sol.add(added);
+                // borre sus ejes
+                discardEdges(added);
+            }
+            solution = sol.stream().mapToInt(Integer::intValue).toArray();
+        }
+    }
 
+    private class Algorithm3 extends ApproximateAlgorithm {
+
+        public HashMap<Integer, List<Integer>> input;
+
+        @Override
+        public void parseInput(VertexCoverApproximateAlgorithms.Edge[] edges) {
+            Integer leftid = null;
+            Integer rightid = null;
+            input = new HashMap<>();
+            for (Edge e : edges) {
+                leftid = e.left;
+                rightid = e.right;
+                if (!input.containsKey(leftid)) {
+                    input.put(leftid, new LinkedList<Integer>());
+
+                }
+                if (!input.containsKey(rightid)) {
+                    input.put(rightid, new LinkedList<Integer>());
+                }
+                input.get(leftid).add(rightid);
+                input.get(rightid).add(leftid);
+            }
+        }
+
+        public int rank(int v) {
+
+            return input.get(v).size();
+        }
+
+        public int findHighestRank(int v, int w) {
+            return (rank(v) >= rank(w)) ? v : w;
+        }
+
+        public void discardEdges(int v) {
+            input.remove(v);
+            ArrayList<Integer> markforDeletion = new ArrayList<>();
+            for (Integer index : input.keySet()) {
+                while (input.get(index).contains(v)) {
+                    input.get(index).remove(input.get(index).indexOf(v));
+                }
+                if (input.get(index).isEmpty()) {
+                    markforDeletion.add(index);
+                }
+            }
+            markforDeletion.forEach(i -> input.remove(i));
+        }
+
+        public int[] findRandomEdge(Random r) {
+            int[] vertices = input.keySet().stream().mapToInt(Integer::intValue).toArray();
+            int edgeLeft = vertices[r.nextInt(vertices.length)];
+            int edgeRight = input.get(edgeLeft).get(r.nextInt(input.get(edgeLeft).size()));
+            int[] edge = { edgeLeft, edgeRight };
+            return edge;
+        }
+
+        @Override
+        public void solveVertexCover() {
+            Random r = new Random();
+            ArrayList<Integer> sol = new ArrayList<>();
+            while (!input.isEmpty()) {
+                // encuentre uno random
+                int[] randomEdge = findRandomEdge(r);
+                // agregue el de mayor rango
+                int added = findHighestRank(randomEdge[0], randomEdge[1]);
+                sol.add(added);
+                // borre sus ejes
+                discardEdges(added);
+            }
+            solution = sol.stream().mapToInt(Integer::intValue).toArray();
+            return;
         }
 
     }
@@ -172,30 +268,34 @@ public class VertexCoverApproximateAlgorithms {
             // 3 = algoritmo 3
             // 4 = algoritmo 4
             int algorithmNumber = (args.length > 0) ? Integer.parseInt(args[0]) : 0;
-            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-            Edge[] edges = parseGraphInput(instance, br);
-            ApproximateAlgorithm algorithm;
-            switch (algorithmNumber) {
-                case 1:
-                    algorithm = instance.new Algorithm1();
-                    System.out.println(algorithm.solveIndividual(edges));
-                    break;
-                case 2:
-                    algorithm = instance.new Algorithm2();
-                    System.out.println(algorithm.solveIndividual(edges));
-                    break;
-                case 3:
-                    algorithm = instance.new Algorithm3();
-                    System.out.println(algorithm.solveIndividual(edges));
-                    break;
-                case 4:
-                    algorithm = instance.new Algorithm4();
-                    System.out.println(algorithm.solveIndividual(edges));
-                    break;
-                default:
-                    instance.runTestCases(Integer.parseInt(args[1]));
-
-                    break;
+            if (algorithmNumber != 0) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+                Edge[] edges = parseGraphInput(instance, br);
+                ApproximateAlgorithm algorithm;
+                switch (algorithmNumber) {
+                    case 1:
+                        algorithm = instance.new Algorithm1();
+                        System.out.println(algorithm.solveIndividual(edges));
+                        break;
+                    case 2:
+                        algorithm = instance.new Algorithm2();
+                        System.out.println(algorithm.solveIndividual(edges));
+                        break;
+                    case 3:
+                        algorithm = instance.new Algorithm3();
+                        System.out.println(algorithm.solveIndividual(edges));
+                        break;
+                    case 4:
+                        algorithm = instance.new Algorithm4();
+                        System.out.println(algorithm.solveIndividual(edges));
+                        break;
+                    default:
+                        System.out.println("wut");
+                        break;
+                }
+            } else {
+                int testCases = (args.length > 1) ? Integer.parseInt(args[1]) : 10;
+                instance.runTestCases(testCases);
             }
         } catch (IOException e) {
             System.out.println("Error leyendo la entrada");
@@ -239,76 +339,59 @@ public class VertexCoverApproximateAlgorithms {
     }
 
     public void runTestCases(int n) {
-        ApproximateAlgorithm algorithm1 = new Algorithm1();
-        ApproximateAlgorithm algorithm2 = new Algorithm2();
-        ApproximateAlgorithm algorithm3 = new Algorithm3();
-        ApproximateAlgorithm algorithm4 = new Algorithm4();
-        int[] sizes = { 100, 1000, 10000 };
-        StringBuilder sb = new StringBuilder();
-        sb.append("algoritmo\ttiempo ejecucion\tcaseid\tconteo\n");
-        for (int i = 0; i < n; i++) {
-            for (int size : sizes) {
+
+        int[] sizes = { 10000 };
+        System.out.println("algoritmo\ttiempo ejecucion\tcaseid\tconteo");
+        for (int size : sizes) {
+            for (int i = 1; i < n + 1; i++) {
                 Edge[] testInput = generateGraph(size);
-                algorithm1.parseInput(testInput);
-                algorithm2.parseInput(testInput);
-                algorithm3.parseInput(testInput);
-                algorithm4.parseInput(testInput);
-                Long timeStartAlg1 = System.nanoTime();
-                algorithm1.solveVertexCover();
-                Long timeEndAlg1 = System.nanoTime();
-                Long timeDiffAlg1 = timeEndAlg1 - timeStartAlg1;
-                Long timeStartAlg2 = System.nanoTime();
-                algorithm2.solveVertexCover();
-                Long timeEndAlg2 = System.nanoTime();
-                Long timeDiffAlg2 = timeEndAlg2 - timeStartAlg2;
-                Long timeStartAlg3 = System.nanoTime();
-                algorithm3.solveVertexCover();
-                Long timeEndAlg3 = System.nanoTime();
-                Long timeDiffAlg3 = timeEndAlg3 - timeStartAlg3;
-                Long timeStartAlg4 = System.nanoTime();
-                algorithm4.solveVertexCover();
-                Long timeEndAlg4 = System.nanoTime();
-                Long timeDiffAlg4 = timeEndAlg4 - timeStartAlg4;
-                // 1 --------------------
-                sb.append(1);
-                sb.append("\t");
-                sb.append(timeDiffAlg1);
-                sb.append("\t");
-                sb.append(i);
-                sb.append("\tconteo");
-                sb.append(algorithm1.getCount());
-                sb.append("\n");
-                // 2 --------------------
-                sb.append(2);
-                sb.append("\t");
-                sb.append(timeDiffAlg2);
-                sb.append("\t");
-                sb.append(i);
-                sb.append("\tconteo");
-                sb.append(algorithm2.getCount());
-                sb.append("\n");
-                // 3 --------------------
-                sb.append(3);
-                sb.append("\t");
-                sb.append(timeDiffAlg3);
-                sb.append("\t");
-                sb.append(i);
-                sb.append("\tconteo");
-                sb.append(algorithm3.getCount());
-                sb.append("\n");
-                // 4 --------------------
-                sb.append(4);
-                sb.append("\t");
-                sb.append(timeDiffAlg4);
-                sb.append("\t");
-                sb.append(i);
-                sb.append("\tconteo");
-                sb.append(algorithm4.getCount());
-                sb.append("\n");
-                System.out.println(sb.toString());
-                sb.setLength(0);
+                Runner r1 = new Runner(new Algorithm1(), testInput, i, size);
+                Runner r2 = new Runner(new Algorithm2(), testInput, i, size);
+                Runner r3 = new Runner(new Algorithm3(), testInput, i, size);
+                Runner r4 = new Runner(new Algorithm4(), testInput, i, size);
+                r1.start();
+                r4.start();
+                r2.start();
+                r3.start();
             }
         }
 
+    }
+
+    private class Runner extends Thread {
+        ApproximateAlgorithm algorithm;
+        Edge[] input;
+        int caseid;
+        int caseSize;
+
+        public Runner(ApproximateAlgorithm instance, Edge[] pInput, int pcaseid, int pcaseSize) {
+            algorithm = instance;
+            input = pInput;
+            caseid = pcaseid;
+            caseSize = pcaseSize;
+        }
+
+        public void run() {
+            StringBuilder sb = new StringBuilder();
+            algorithm.parseInput(input);
+            long timeStartAlg1 = System.nanoTime();
+            algorithm.solveVertexCover();
+            long timeEndAlg1 = System.nanoTime();
+            long timeDiffAlg1 = timeEndAlg1 - timeStartAlg1;
+            sb.append(algorithm.getClass().getSimpleName());
+            sb.append("\t");
+            sb.append(timeDiffAlg1);
+            sb.append("\t");
+            sb.append(caseid + ";" + caseSize);
+            sb.append("\t");
+            sb.append(algorithm.getCount());
+            sb.append("\n");
+            writetoOutput(sb.toString());
+            return;
+        }
+
+        public synchronized void writetoOutput(String s) {
+            System.out.print(s);
+        }
     }
 }
